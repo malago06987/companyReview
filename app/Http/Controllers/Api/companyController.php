@@ -3,31 +3,27 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\company;
+use App\Models\Company;
 use Illuminate\Http\Request;
-use App\Http\Resources\companyResource;
+use App\Http\Resources\CompanyResource;
 
-class companyController extends Controller
+class CompanyController extends Controller
 {
-    // 1. ดึงรายการบริษัททั้งหมด (รองรับการค้นหาตามชื่อ)
     public function index(Request $request)
     {
-        $query = company::query()->with('industry');
+        $query = Company::with('industry');
 
-        if ($request->filled('search')) {
-            $query->where('company_name', 'like', '%' . $request->string('search') . '%');
+        if ($request->has('search')) {
+            $query->where('company_name', 'like', '%' . $request->search . '%');
         }
 
-        $companies = $query->latest('company_id')->paginate(15);
+        $companies = $query->get();
 
-        return companyResource::collection($companies);
+        return CompanyResource::collection($companies);
     }
 
-    // 2. สร้างข้อมูลบริษัทใหม่
     public function store(Request $request)
     {
-        abort_unless($request->user()?->role === 'admin', 403);
-
         $validated = $request->validate([
             'company_name' => 'required|string|max:255',
             'industry_id' => 'required|exists:industries,industry_id',
@@ -38,25 +34,21 @@ class companyController extends Controller
             'logo_image' => 'nullable|string',
         ]);
 
-        $company = company::create($validated)->load('industry');
+        $company = Company::create($validated);
 
         return response()->json([
             'message' => 'Company created successfully.',
-            'data' => new companyResource($company)
+            'data' => new CompanyResource($company)
         ], 201);
     }
 
-    // 3. ดูข้อมูลบริษัทรายบริษัท
-    public function show(company $company)
+    public function show(Company $company)
     {
-        return new companyResource($company->load(['industry', 'reviews.user', 'jobs']));
+        return new CompanyResource($company->load(['industry', 'reviews.user', 'jobs']));
     }
 
-    // 4. แก้ไขข้อมูลบริษัท
-    public function update(Request $request, company $company)
+    public function update(Request $request, Company $company)
     {
-        abort_unless($request->user()?->role === 'admin', 403);
-
         $validated = $request->validate([
             'company_name' => 'sometimes|string|max:255',
             'industry_id' => 'sometimes|exists:industries,industry_id',
@@ -68,19 +60,15 @@ class companyController extends Controller
         ]);
 
         $company->update($validated);
-        $company->load('industry');
 
         return response()->json([
             'message' => 'Company updated successfully.',
-            'data' => new companyResource($company)
+            'data' => new CompanyResource($company)
         ], 200);
     }
 
-    // 5. ลบข้อมูลบริษัท (Soft Delete)
-    public function destroy(company $company)
+    public function destroy(Company $company)
     {
-        abort_unless(request()->user()?->role === 'admin', 403);
-
         $company->delete();
 
         return response()->json([
