@@ -19,14 +19,16 @@ class jobFunctionController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'function_name' => ['required', 'string', 'max:255', 'unique:job_functions,function_name'],
-        ]);
+ public function store(Request $request)
+{
+    abort_unless($request->user()?->role === 'admin', 403);
 
-        return response()->json(jobFunction::create($validated), 201);
-    }
+    $validated = $request->validate([
+        'function_name' => ['required', 'string', 'max:255', 'unique:job_functions,function_name'],
+    ]);
+
+    return response()->json(jobFunction::create($validated), 201);
+}
 
     /**
      * Display the specified resource.
@@ -39,25 +41,42 @@ class jobFunctionController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, jobFunction $jobFunction)
-    {
-        $validated = $request->validate([
-            'function_name' => ['required', 'string', 'max:255', 'unique:job_functions,function_name,'.$jobFunction->function_id.',function_id'],
-        ]);
+public function update(Request $request, jobFunction $jobFunction)
+{
+    abort_unless($request->user()?->role === 'admin', 403);
 
-        $jobFunction->update($validated);
+    $validated = $request->validate([
+        'function_name' => [
+            'required',
+            'string',
+            'max:255',
+            'unique:job_functions,function_name,' .
+            $jobFunction->function_id .
+            ',function_id'
+        ],
+    ]);
 
-        return response()->json($jobFunction);
-    }
+    $jobFunction->update($validated);
+
+    return response()->json($jobFunction);
+}
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(jobFunction $jobFunction)
-    {
-        abort_if($jobFunction->jobs()->exists(), 409, 'Cannot delete a job function with jobs.');
-        $jobFunction->delete();
+public function destroy(jobFunction $jobFunction)
+{
+    abort_unless(request()->user()?->role === 'admin', 403);
 
-        return response()->noContent();
-    }
+    abort_if(
+        $jobFunction->jobs()->exists(),
+        409,
+        'Cannot delete a job function with jobs.'
+    );
+
+    $jobFunction->delete();
+
+    return response()->noContent();
+}
+
 }

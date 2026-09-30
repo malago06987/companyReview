@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\review;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class reviewController extends Controller
 {
@@ -29,7 +30,11 @@ class reviewController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'company_id' => ['required', 'exists:companies,company_id'],
+            'company_id' => [
+                'required',
+                'exists:companies,company_id',
+                Rule::unique('reviews', 'company_id')->where('user_id', $request->user()->user_id),
+            ],
             'rating_life' => ['required', 'integer', 'between:1,5'],
             'rating_work' => ['required', 'integer', 'between:1,5'],
             'rating_money' => ['required', 'integer', 'between:1,5'],

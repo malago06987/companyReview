@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\job;
 use Illuminate\Http\Request;
+use App\Http\Resources\JobResource;
 
 class jobController extends Controller
 {
@@ -13,13 +14,16 @@ class jobController extends Controller
      */
     public function index(Request $request)
     {
-        $query = job::with(['company', 'jobFunction'])->where('status', 'open');
+        $query = job::with(['company', 'jobFunction'])
+            ->where('status', 'open');
 
         if ($request->filled('company_id')) {
             $query->where('company_id', $request->integer('company_id'));
         }
 
-        return response()->json($query->latest('job_id')->paginate(15));
+        $jobs = $query->latest('job_id')->paginate(15);
+
+        return JobResource::collection($jobs);
     }
 
     /**
@@ -40,7 +44,14 @@ class jobController extends Controller
             'status' => ['sometimes', 'in:open,closed'],
         ]);
 
-        return response()->json(job::create($validated)->load(['company', 'jobFunction']), 201);
+        $job = job::create($validated);
+
+        return response()->json([
+            'message' => 'Job created successfully.',
+            'data' => new JobResource(
+                $job->load(['company', 'jobFunction'])
+            )
+        ], 201);
     }
 
     /**
@@ -48,7 +59,9 @@ class jobController extends Controller
      */
     public function show(job $job)
     {
-        return response()->json($job->load(['company', 'jobFunction']));
+        return new JobResource(
+            $job->load(['company', 'jobFunction'])
+        );
     }
 
     /**
@@ -71,7 +84,12 @@ class jobController extends Controller
 
         $job->update($validated);
 
-        return response()->json($job->load(['company', 'jobFunction']));
+        return response()->json([
+            'message' => 'Job updated successfully.',
+            'data' => new JobResource(
+                $job->load(['company', 'jobFunction'])
+            )
+        ]);
     }
 
     /**

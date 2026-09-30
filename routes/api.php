@@ -3,7 +3,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\ReviewController;
@@ -41,7 +41,7 @@ Route::apiResource('industries', IndustryController::class)
 
 // Job Functions
 Route::apiResource('job-functions', JobFunctionController::class)
-    ->only(['index', 'show']);
+    ->only(['index', 'show', 'store', 'update', 'destroy']);
 
 
 // 2. Protected Routes
@@ -49,9 +49,14 @@ Route::apiResource('job-functions', JobFunctionController::class)
 
 Route::middleware('auth:sanctum')->group(function () {
 
+
+
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // Users
+Route::apiResource('users', UserController::class)
+    ->only(['index', 'show', 'update', 'destroy']);
 
     // Companies
     Route::apiResource('companies', CompanyController::class)

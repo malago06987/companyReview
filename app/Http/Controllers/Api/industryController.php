@@ -24,21 +24,23 @@ class industryController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'industry_name' => [
-                'required',
-                'string',
-                'max:255',
-                'unique:industries,industry_name'
-            ],
-        ]);
+public function store(Request $request)
+{
+    abort_unless($request->user()?->role === 'admin', 403);
 
-        $industry = industry::create($validated);
+    $validated = $request->validate([
+        'industry_name' => [
+            'required',
+            'string',
+            'max:255',
+            'unique:industries,industry_name'
+        ],
+    ]);
 
-        return new industryResource($industry);
-    }
+    $industry = industry::create($validated);
+
+    return new industryResource($industry);
+}
 
     /**
      * Display the specified resource.
@@ -51,37 +53,41 @@ class industryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, industry $industry)
-    {
-        $validated = $request->validate([
-            'industry_name' => [
-                'required',
-                'string',
-                'max:255',
-                'unique:industries,industry_name,' .
-                $industry->industry_id .
-                ',industry_id'
-            ],
-        ]);
+public function update(Request $request, industry $industry)
+{
+    abort_unless($request->user()?->role === 'admin', 403);
 
-        $industry->update($validated);
+    $validated = $request->validate([
+        'industry_name' => [
+            'required',
+            'string',
+            'max:255',
+            'unique:industries,industry_name,' .
+            $industry->industry_id .
+            ',industry_id'
+        ],
+    ]);
 
-        return new industryResource($industry);
-    }
+    $industry->update($validated);
+
+    return new industryResource($industry);
+}
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(industry $industry)
-    {
-        abort_if(
-            $industry->companies()->exists(),
-            409,
-            'Cannot delete an industry with companies.'
-        );
+{
+    abort_unless(request()->user()?->role === 'admin', 403);
 
-        $industry->delete();
+    abort_if(
+        $industry->companies()->exists(),
+        409,
+        'Cannot delete an industry with companies.'
+    );
 
-        return response()->noContent();
-    }
+    $industry->delete();
+
+    return response()->noContent();
+}
 }
