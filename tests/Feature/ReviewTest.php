@@ -12,6 +12,18 @@ class ReviewTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_database_seeder_creates_the_expected_records(): void
+    {
+        $this->seed();
+
+        $this->assertDatabaseCount('users', 20);
+        $this->assertDatabaseCount('industries', 10);
+        $this->assertDatabaseCount('companies', 20);
+        $this->assertDatabaseCount('job_functions', 10);
+        $this->assertDatabaseCount('jobs', 50);
+        $this->assertDatabaseCount('reviews', 100);
+    }
+
     public function test_a_user_can_review_a_company_only_once(): void
     {
         $user = user::create([
