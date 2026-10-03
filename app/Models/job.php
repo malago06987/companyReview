@@ -25,6 +25,7 @@ class job extends Model
         'approval_status',
         'rejection_reason',
         'user_id',
+        'authorization_document_path',
     ];
 public function company() {
     return $this->belongsTo(company::class, 'company_id', 'company_id');

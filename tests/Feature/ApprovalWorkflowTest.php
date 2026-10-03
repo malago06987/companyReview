@@ -8,6 +8,8 @@ use App\Models\job;
 use App\Models\jobFunction;
 use App\Models\user;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ApprovalWorkflowTest extends TestCase
@@ -16,6 +18,8 @@ class ApprovalWorkflowTest extends TestCase
 
     public function test_authenticated_users_can_submit_companies_and_jobs_for_approval(): void
     {
+        Storage::fake('local');
+
         $owner = user::factory()->create();
         $industry = industry::create(['industry_name' => 'Technology']);
         $function = jobFunction::create(['function_name' => 'Engineering']);
@@ -33,14 +37,17 @@ class ApprovalWorkflowTest extends TestCase
             ->assertJsonPath('message', 'ส่งข้อมูลบริษัทแล้ว รออนุมัติ')
             ->assertJsonPath('data.approval_status', 'pending');
 
-        $jobResponse = $this->postJson('/api/jobs', [
+        $jobResponse = $this->post('/api/jobs', [
             'company_id' => $approvedCompany->company_id,
             'function_id' => $function->function_id,
             'job_title' => 'Software Engineer',
             'job_description' => 'Build software.',
-        ])->assertCreated()
+            'authorization_document' => UploadedFile::fake()->createWithContent('authorization.pdf', "%PDF-1.4\n"),
+        ], ['Accept' => 'application/json'])->assertCreated()
             ->assertJsonPath('message', 'ส่งประกาศงานแล้ว รออนุมัติ')
-            ->assertJsonPath('data.approval_status', 'pending');
+            ->assertJsonPath('data.approval_status', 'pending')
+            ->assertJsonMissingPath('data.authorization_document_path')
+            ->assertJsonMissingPath('data.has_authorization_document');
 
         $this->assertDatabaseHas('companies', [
             'company_id' => $companyResponse->json('data.company_id'),
@@ -52,6 +59,9 @@ class ApprovalWorkflowTest extends TestCase
             'user_id' => $owner->user_id,
             'approval_status' => 'pending',
         ]);
+        $path = job::findOrFail($jobResponse->json('data.job_id'))->authorization_document_path;
+        $this->assertNotNull($path);
+        Storage::disk('local')->assertExists($path);
     }
 
     public function test_guests_cannot_submit_companies_or_jobs(): void
@@ -74,6 +84,45 @@ class ApprovalWorkflowTest extends TestCase
             'job_title' => 'Software Engineer',
             'job_description' => 'Build software.',
         ])->assertUnauthorized();
+    }
+
+    public function test_job_submission_requires_a_supported_document_within_the_size_limit(): void
+    {
+        $owner = user::factory()->create();
+        $industry = industry::create(['industry_name' => 'Technology']);
+        $function = jobFunction::create(['function_name' => 'Engineering']);
+        $company = company::create([
+            'company_name' => 'Approved Company',
+            'industry_id' => $industry->industry_id,
+        ]);
+        $jobDetails = [
+            'company_id' => $company->company_id,
+            'function_id' => $function->function_id,
+            'job_title' => 'Software Engineer',
+            'job_description' => 'Build software.',
+        ];
+
+        $this->actingAs($owner, 'sanctum');
+
+        $this->postJson('/api/jobs', $jobDetails)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('authorization_document');
+        $this->post('/api/jobs', $jobDetails + [
+            'authorization_document' => UploadedFile::fake()->create('script.txt', 10, 'text/plain'),
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('authorization_document');
+        $this->post('/api/jobs', $jobDetails + [
+            'authorization_document' => UploadedFile::fake()->create('oversized.pdf', 5121, 'application/pdf'),
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('authorization_document');
+
+        $admin = user::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin, 'sanctum');
+        $this->postJson('/api/jobs', $jobDetails)
+            ->assertCreated()
+            ->assertJsonPath('data.approval_status', 'pending');
     }
 
     public function test_users_cannot_set_approval_status_or_submitter_id(): void
@@ -101,6 +150,7 @@ class ApprovalWorkflowTest extends TestCase
             'function_id' => $function->function_id,
             'job_title' => 'Software Engineer',
             'job_description' => 'Build software.',
+            'authorization_document' => UploadedFile::fake()->createWithContent('authorization.pdf', "%PDF-1.4\n"),
             'approval_status' => 'approved',
             'user_id' => user::factory()->create()->user_id,
         ])->assertUnprocessable()
@@ -252,6 +302,89 @@ class ApprovalWorkflowTest extends TestCase
             'job_id' => $job->job_id,
             'approval_status' => 'approved',
         ]);
+    }
+
+    public function test_only_admins_can_view_private_job_authorization_documents(): void
+    {
+        Storage::fake('local');
+        $owner = user::factory()->create();
+        $otherUser = user::factory()->create();
+        $admin = user::factory()->create(['role' => 'admin']);
+        $industry = industry::create(['industry_name' => 'Technology']);
+        $function = jobFunction::create(['function_name' => 'Engineering']);
+        $company = company::create([
+            'company_name' => 'Approved Company',
+            'industry_id' => $industry->industry_id,
+        ]);
+
+        $this->actingAs($owner, 'sanctum');
+        $created = $this->post('/api/jobs', [
+            'company_id' => $company->company_id,
+            'function_id' => $function->function_id,
+            'job_title' => 'Documented Job',
+            'job_description' => 'Review the evidence.',
+            'authorization_document' => UploadedFile::fake()->create('authorization.pdf', 100, 'application/pdf'),
+        ], ['Accept' => 'application/json'])->assertCreated();
+        $jobId = $created->json('data.job_id');
+        $job = job::findOrFail($jobId);
+        Storage::disk('local')->assertExists($job->authorization_document_path);
+
+        $this->getJson('/api/admin/jobs/'.$jobId.'/authorization-document')->assertForbidden();
+        $this->getJson('/api/admin/jobs')
+            ->assertForbidden();
+        $this->get('/api/admin/jobs/'.$jobId.'/authorization-document')
+            ->assertForbidden();
+
+        $this->actingAs($otherUser, 'sanctum');
+        $this->get('/api/admin/jobs/'.$jobId.'/authorization-document')
+            ->assertForbidden();
+
+        $this->actingAs($admin, 'sanctum');
+        $this->getJson('/api/admin/jobs')
+            ->assertOk()
+            ->assertJsonPath('data.0.has_authorization_document', true)
+            ->assertJsonMissingPath('data.0.authorization_document_path');
+        $this->get('/api/admin/jobs/'.$jobId.'/authorization-document')
+            ->assertOk()
+            ->assertHeader('content-disposition');
+
+        $this->actingAs($owner, 'sanctum');
+        $this->getJson('/api/jobs')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->actingAs($admin, 'sanctum');
+        $this->patchJson('/api/admin/jobs/'.$jobId.'/approval', [
+            'approval_status' => 'approved',
+        ])->assertOk();
+        $this->actingAs($owner, 'sanctum');
+        $this->getJson('/api/jobs')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.job_id', $jobId);
+
+        $withoutDocument = job::create([
+            'company_id' => $company->company_id,
+            'function_id' => $function->function_id,
+            'job_title' => 'No Document',
+            'job_description' => 'No evidence.',
+        ]);
+        $this->actingAs($admin, 'sanctum');
+        $this->get('/api/admin/jobs/'.$withoutDocument->job_id.'/authorization-document')
+            ->assertNotFound();
+
+        $this->actingAs($otherUser, 'sanctum');
+        $this->deleteJson('/api/jobs/'.$jobId)->assertForbidden();
+
+        $this->actingAs($owner, 'sanctum');
+        $this->patch('/api/jobs/'.$jobId, [
+            'authorization_document' => UploadedFile::fake()->createWithContent('replacement.pdf', "%PDF-1.4\n"),
+        ], ['Accept' => 'application/json'])->assertUnprocessable()
+            ->assertJsonValidationErrors('authorization_document');
+        Storage::disk('local')->assertExists($job->authorization_document_path);
+
+        $this->deleteJson('/api/jobs/'.$jobId)->assertNoContent();
+        Storage::disk('local')->assertMissing($job->authorization_document_path);
     }
 
     public function test_users_can_only_view_and_manage_their_own_submissions_and_edits_require_reapproval(): void

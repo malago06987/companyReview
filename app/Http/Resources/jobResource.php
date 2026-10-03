@@ -23,6 +23,10 @@ class JobResource extends JsonResource
                 $request->user()?->role === 'admin',
                 $this->user_id
             ),
+            'has_authorization_document' => $this->when(
+                $request->user()?->role === 'admin',
+                $this->authorization_document_path !== null
+            ),
 
             'company' => [
                 'company_id' => $this->company->company_id ?? null,
