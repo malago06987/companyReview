@@ -15,6 +15,18 @@ class CompanyResource extends JsonResource
 
         return [
             'company_id' => $this->company_id,
+            'approval_status' => $this->approval_status,
+            'rejection_reason' => $this->when(
+                $request->user() && (
+                    $request->user()->role === 'admin'
+                    || $request->user()->user_id === $this->user_id
+                ),
+                $this->rejection_reason
+            ),
+            'submitted_by' => $this->when(
+                $request->user()?->role === 'admin',
+                $this->user_id
+            ),
             'company_name' => $this->company_name,
             'logo_image' => $this->logo_image,
             'description' => $this->description,

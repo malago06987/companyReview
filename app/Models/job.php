@@ -22,12 +22,18 @@ class job extends Model
         'work_location',
         'employment_type',
         'status',
+        'approval_status',
+        'rejection_reason',
+        'user_id',
     ];
 public function company() {
     return $this->belongsTo(company::class, 'company_id', 'company_id');
 }
 public function jobFunction() {
     return $this->belongsTo(jobFunction::class, 'function_id', 'function_id');
+}
+public function user() {
+    return $this->belongsTo(user::class, 'user_id', 'user_id');
 }
 
 }

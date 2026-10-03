@@ -11,6 +11,18 @@ class JobResource extends JsonResource
     {
         return [
             'job_id' => $this->job_id,
+            'approval_status' => $this->approval_status,
+            'rejection_reason' => $this->when(
+                $request->user() && (
+                    $request->user()->role === 'admin'
+                    || $request->user()->user_id === $this->user_id
+                ),
+                $this->rejection_reason
+            ),
+            'submitted_by' => $this->when(
+                $request->user()?->role === 'admin',
+                $this->user_id
+            ),
 
             'company' => [
                 'company_id' => $this->company->company_id ?? null,

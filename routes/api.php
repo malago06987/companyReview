@@ -49,10 +49,18 @@ Route::apiResource('job-functions', JobFunctionController::class)
 
 Route::middleware('auth:sanctum')->group(function () {
 
-
-
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Submitted records
+    Route::get('/my/companies', [CompanyController::class, 'mine']);
+    Route::get('/my/jobs', [JobController::class, 'mine']);
+
+    // Admin approval workflow
+    Route::get('/admin/companies', [CompanyController::class, 'adminIndex']);
+    Route::patch('/admin/companies/{company}/approval', [CompanyController::class, 'updateApproval']);
+    Route::get('/admin/jobs', [JobController::class, 'adminIndex']);
+    Route::patch('/admin/jobs/{job}/approval', [JobController::class, 'updateApproval']);
 
     // Users
 Route::apiResource('users', UserController::class)

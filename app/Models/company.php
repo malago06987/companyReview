@@ -19,6 +19,9 @@ class company extends Model
         'address',
         'benefits',
         'culture',
+        'approval_status',
+        'rejection_reason',
+        'user_id',
     ];
 
     public function industry() {
@@ -29,5 +32,8 @@ public function reviews() {
 }
 public function jobs() {
     return $this->hasMany(job::class, 'company_id', 'company_id');
+}
+public function user() {
+    return $this->belongsTo(user::class, 'user_id', 'user_id');
 }
 }
