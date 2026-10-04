@@ -36,5 +36,8 @@ public function jobFunction() {
 public function user() {
     return $this->belongsTo(user::class, 'user_id', 'user_id');
 }
+public function applications() {
+    return $this->hasMany(JobApplication::class, 'job_id', 'job_id');
+}
 
 }

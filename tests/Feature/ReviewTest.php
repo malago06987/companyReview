@@ -19,7 +19,7 @@ class ReviewTest extends TestCase
         $this->assertDatabaseCount('users', 20);
         $this->assertDatabaseCount('industries', 10);
         $this->assertDatabaseCount('companies', 20);
-        $this->assertDatabaseCount('job_functions', 10);
+        $this->assertDatabaseCount('job_functions', 36);
         $this->assertDatabaseCount('jobs', 50);
         $this->assertDatabaseCount('reviews', 100);
     }

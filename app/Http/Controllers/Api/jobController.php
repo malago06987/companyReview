@@ -43,6 +43,7 @@ class jobController extends Controller
     public function mine(Request $request)
     {
         $jobs = job::with(['company', 'jobFunction'])
+            ->withCount('applications')
             ->where('user_id', $request->user()->user_id)
             ->latest('job_id')
             ->get();
@@ -225,8 +226,6 @@ class jobController extends Controller
         );
 
         $job->delete();
-
-        $this->deleteAuthorizationDocument($job->document);
 
         return response()->noContent();
     }

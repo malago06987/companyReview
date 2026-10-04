@@ -15,11 +15,9 @@ return new class extends Migration
         $table->id('user_id'); // Primary Key เป็น user_id
         $table->string('full_name');
         $table->string('email')->unique();
-        $table->timestamp('email_verified_at')->nullable();
         $table->string('password');
         $table->string('profile_image')->nullable();
         $table->string('role')->default('user'); // สิทธิ์ผู้ใช้งาน เช่น user, admin
-        $table->rememberToken();
         $table->timestamps();
         $table->softDeletes();
     });

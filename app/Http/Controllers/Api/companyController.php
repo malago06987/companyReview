@@ -203,8 +203,6 @@ class CompanyController extends Controller
 
         $company->delete();
 
-        $this->deleteRegistrationDocument($company->document);
-
         return response()->json([
             'message' => 'ลบข้อมูลบริษัทเรียบร้อยแล้ว'
         ], 200);

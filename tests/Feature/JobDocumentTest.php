@@ -54,6 +54,7 @@ class JobDocumentTest extends TestCase
         $this->actingAs($owner, 'sanctum')
             ->deleteJson('/api/jobs/'.$job->job_id)
             ->assertNoContent();
-        $this->assertFileDoesNotExist($path);
+        $this->assertFileExists($path);
+        unlink($path);
     }
 }

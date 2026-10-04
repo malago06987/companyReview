@@ -27,6 +27,7 @@ class JobResource extends JsonResource
                 $request->user()?->role === 'admin',
                 $this->document !== null
             ),
+            'applications_count' => $this->whenCounted('applications'),
 
             'company' => [
                 'company_id' => $this->company->company_id ?? null,

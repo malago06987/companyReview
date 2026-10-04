@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\JobController;
 use App\Http\Controllers\Api\IndustryController;
 use App\Http\Controllers\Api\JobFunctionController;
+use App\Http\Controllers\Api\JobApplicationController;
 
 
 // 1. Public Routes
@@ -55,6 +56,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Submitted records
     Route::get('/my/companies', [CompanyController::class, 'mine']);
     Route::get('/my/jobs', [JobController::class, 'mine']);
+    Route::get('/my/applications', [JobApplicationController::class, 'mine']);
+    Route::post('/jobs/{job}/applications', [JobApplicationController::class, 'store']);
+    Route::get('/jobs/{job}/applications', [JobApplicationController::class, 'index']);
+    Route::get('/jobs/{job}/applications/{application}/resume', [JobApplicationController::class, 'resume'])
+        ->name('job-applications.resume');
 
     // Admin approval workflow
     Route::get('/admin/companies', [CompanyController::class, 'adminIndex']);

@@ -17,7 +17,7 @@ class JobFactory extends Factory
         return [
             'company_id' => fake()->numberBetween(1, 20),
 
-            'function_id' => fake()->numberBetween(1, 10),
+            'function_id' => fake()->numberBetween(1, 36),
 
             'job_title' => fake()->randomElement([
                 'Frontend Developer',
