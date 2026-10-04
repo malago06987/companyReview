@@ -171,7 +171,7 @@ class jobController extends Controller
         $job->update($validated);
 
         return response()->json([
-            'message' => 'Job updated successfully.',
+            'message' => 'แก้ไขประกาศงานเรียบร้อยแล้ว',
             'data' => new JobResource(
                 $job->load(['company', 'jobFunction'])
             )
@@ -210,7 +210,7 @@ class jobController extends Controller
             $job->authorization_document_path !== null
                 && $storage->exists($job->authorization_document_path),
             404,
-            'Authorization document not found.'
+            'ไม่พบเอกสารประกอบการสมัครงาน'
         );
 
         return response()->file(
@@ -237,8 +237,8 @@ class jobController extends Controller
 
         return response()->json([
             'message' => $validated['approval_status'] === 'approved'
-                ? 'Job approved successfully.'
-                : 'Job rejected successfully.',
+                ? 'อนุมัติประกาศงานเรียบร้อยแล้ว'
+                : 'ไม่อนุมัติประกาศงานเรียบร้อยแล้ว',
             'data' => new JobResource($job->load(['company', 'jobFunction'])),
         ]);
     }

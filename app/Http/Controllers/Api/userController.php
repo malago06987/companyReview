@@ -12,7 +12,7 @@ class userController extends Controller
     {
         if ($request->user()->role !== 'admin') {
             return response()->json([
-                'message' => 'Unauthorized'
+                'message' => 'คุณไม่มีสิทธิ์ดำเนินการนี้'
             ], 403);
         }
 
@@ -23,7 +23,7 @@ class userController extends Controller
     {
         if ($request->user()->role !== 'admin') {
             return response()->json([
-                'message' => 'Unauthorized'
+                'message' => 'คุณไม่มีสิทธิ์ดำเนินการนี้'
             ], 403);
         }
 
@@ -34,7 +34,7 @@ class userController extends Controller
     {
         if ($request->user()->role !== 'admin') {
             return response()->json([
-                'message' => 'Unauthorized'
+                'message' => 'คุณไม่มีสิทธิ์ดำเนินการนี้'
             ], 403);
         }
 
@@ -52,14 +52,14 @@ class userController extends Controller
     {
         if ($request->user()->role !== 'admin') {
             return response()->json([
-                'message' => 'Unauthorized'
+                'message' => 'คุณไม่มีสิทธิ์ดำเนินการนี้'
             ], 403);
         }
 
         $user->delete();
 
         return response()->json([
-            'message' => 'User deleted successfully.'
+            'message' => 'ลบผู้ใช้เรียบร้อยแล้ว'
         ]);
     }
 }

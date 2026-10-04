@@ -71,7 +71,7 @@ public function destroy(jobFunction $jobFunction)
     abort_if(
         $jobFunction->jobs()->exists(),
         409,
-        'Cannot delete a job function with jobs.'
+        'ไม่สามารถลบสายงานนี้ได้ เนื่องจากยังมีประกาศงานใช้งานอยู่'
     );
 
     $jobFunction->delete();

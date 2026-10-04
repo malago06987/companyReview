@@ -29,7 +29,6 @@ return new class extends Migration
         $table->unsignedTinyInteger('rating_society')->default(0);
 
         $table->text('review_text');
-        $table->string('status')->default('pending'); // เช่น pending, approved, rejected
         $table->timestamps();
         $table->softDeletes();
     });

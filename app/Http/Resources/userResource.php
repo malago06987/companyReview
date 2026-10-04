@@ -35,7 +35,7 @@ class userController extends Controller
         $user->delete();
 
         return response()->json([
-            'message' => 'User deleted successfully.'
+            'message' => 'ลบผู้ใช้เรียบร้อยแล้ว'
         ]);
     }
 }

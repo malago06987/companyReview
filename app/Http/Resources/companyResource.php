@@ -9,9 +9,7 @@ class CompanyResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $reviews = $this->reviews()
-            ->where('status', 'approved')
-            ->get();
+        $reviews = $this->reviews;
 
         return [
             'company_id' => $this->company_id,
@@ -26,6 +24,10 @@ class CompanyResource extends JsonResource
             'submitted_by' => $this->when(
                 $request->user()?->role === 'admin',
                 $this->user_id
+            ),
+            'has_registration_document' => $this->when(
+                $request->user()?->role === 'admin',
+                $this->document !== null
             ),
             'company_name' => $this->company_name,
             'logo_image' => $this->logo_image,

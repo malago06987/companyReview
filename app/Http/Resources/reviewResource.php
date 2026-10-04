@@ -28,7 +28,6 @@ class ReviewResource extends JsonResource
             'rating_society' => $this->rating_society,
 
             'review_text' => $this->review_text,
-            'status' => $this->status,
 
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),

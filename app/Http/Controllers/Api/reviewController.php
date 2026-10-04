@@ -14,8 +14,7 @@ class reviewController extends Controller
      */
     public function index(Request $request)
     {
-        $query = review::with(['company', 'user'])
-            ->where('status', 'approved');
+        $query = review::with(['company', 'user']);
 
         if ($request->filled('company_id')) {
             $query->where('company_id', $request->integer('company_id'));
@@ -45,7 +44,6 @@ class reviewController extends Controller
         $review = review::create([
             ...$validated,
             'user_id' => $request->user()->user_id,
-            'status' => 'pending',
         ]);
 
         return response()->json($review->load(['company', 'user']), 201);
@@ -56,8 +54,6 @@ class reviewController extends Controller
      */
     public function show(review $review)
     {
-        abort_unless($review->status === 'approved', 404);
-
         return response()->json($review->load(['company', 'user']));
     }
 
@@ -74,13 +70,7 @@ class reviewController extends Controller
             'rating_money' => ['sometimes', 'integer', 'between:1,5'],
             'rating_society' => ['sometimes', 'integer', 'between:1,5'],
             'review_text' => ['sometimes', 'string'],
-            'status' => ['sometimes', 'in:pending,approved,rejected'],
         ]);
-
-        if ($request->user()->role !== 'admin') {
-            unset($validated['status']);
-            $validated['status'] = 'pending';
-        }
 
         $review->update($validated);
 

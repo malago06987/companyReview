@@ -22,6 +22,7 @@ class company extends Model
         'approval_status',
         'rejection_reason',
         'user_id',
+        'document',
     ];
 
     public function industry() {

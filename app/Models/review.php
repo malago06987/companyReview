@@ -21,7 +21,6 @@ class review extends Model
         'rating_money',
         'rating_society',
         'review_text',
-        'status',
     ];
 
     public function company() {

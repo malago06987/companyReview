@@ -45,7 +45,7 @@ class authController extends Controller
     $token = $user->createToken('auth_token')->plainTextToken;
 
     return response()->json([
-        'message' => 'User registered successfully.',
+        'message' => 'สมัครสมาชิกเรียบร้อยแล้ว',
         'access_token' => $token,
         'token_type' => 'Bearer',
         'user' => $user,
@@ -63,13 +63,13 @@ class authController extends Controller
         $user = user::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials.'], 401);
+            return response()->json(['message' => 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'], 401);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Logged in successfully.',
+            'message' => 'เข้าสู่ระบบเรียบร้อยแล้ว',
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => $user
@@ -81,6 +81,6 @@ class authController extends Controller
     {
         $request->user()->currentAccessToken()?->delete();
 
-        return response()->json(['message' => 'Logged out successfully.'], 200);
+        return response()->json(['message' => 'ออกจากระบบเรียบร้อยแล้ว'], 200);
     }
 }

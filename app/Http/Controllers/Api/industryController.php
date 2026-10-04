@@ -83,7 +83,7 @@ public function update(Request $request, industry $industry)
     abort_if(
         $industry->companies()->exists(),
         409,
-        'Cannot delete an industry with companies.'
+        'ไม่สามารถลบประเภทธุรกิจนี้ได้ เนื่องจากยังมีบริษัทใช้งานอยู่'
     );
 
     $industry->delete();

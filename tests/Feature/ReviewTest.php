@@ -48,9 +48,19 @@ class ReviewTest extends TestCase
             'review_text' => 'A good place to work.',
         ];
 
-        $this->postJson('/api/reviews', $review)->assertCreated();
+        $created = $this->postJson('/api/reviews', $review)->assertCreated()
+            ->assertJsonMissingPath('status');
         $this->postJson('/api/reviews', $review)->assertUnprocessable()->assertJsonValidationErrors('company_id');
 
         $this->assertDatabaseCount('reviews', 1);
+        $reviewId = $created->json('review_id');
+
+        $this->getJson('/api/reviews')
+            ->assertOk()
+            ->assertJsonPath('data.0.review_id', $reviewId)
+            ->assertJsonMissingPath('data.0.status');
+        $this->getJson('/api/reviews/'.$reviewId)
+            ->assertOk()
+            ->assertJsonMissingPath('status');
     }
 }

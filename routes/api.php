@@ -59,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin approval workflow
     Route::get('/admin/companies', [CompanyController::class, 'adminIndex']);
     Route::patch('/admin/companies/{company}/approval', [CompanyController::class, 'updateApproval']);
+    Route::get('/admin/companies/{company}/registration-document', [CompanyController::class, 'registrationDocument']);
     Route::get('/admin/jobs', [JobController::class, 'adminIndex']);
     Route::patch('/admin/jobs/{job}/approval', [JobController::class, 'updateApproval']);
     Route::get('/admin/jobs/{job}/authorization-document', [JobController::class, 'authorizationDocument']);
