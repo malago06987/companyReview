@@ -161,6 +161,7 @@ return [
     ],
     'attributes' => [
         'address' => 'ที่อยู่',
+        'authorization_document' => 'เอกสารประกอบการสมัครงาน',
         'approval_status' => 'สถานะการอนุมัติ',
         'benefits' => 'สวัสดิการ',
         'company_id' => 'บริษัท',

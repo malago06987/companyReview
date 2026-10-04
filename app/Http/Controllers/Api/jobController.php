@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\job;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use App\Http\Resources\JobResource;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -85,30 +87,27 @@ class jobController extends Controller
             'user_id' => ['prohibited'],
             'role' => ['prohibited'],
             'authorization_document' => $documentRules,
+            'document' => ['prohibited'],
             'authorization_document_path' => ['prohibited'],
         ]);
 
         $authorizationDocumentPath = null;
         if ($request->hasFile('authorization_document')) {
-            $authorizationDocumentPath = Storage::disk('local')->putFile(
-                'job-authorization-documents',
+            $authorizationDocumentPath = $this->storeAuthorizationDocument(
                 $request->file('authorization_document')
             );
-            if ($authorizationDocumentPath === false) {
-                throw new RuntimeException('Unable to store authorization document.');
-            }
         }
 
         $validated['approval_status'] = 'pending';
         $validated['user_id'] = $request->user()->user_id;
-        $validated['authorization_document_path'] = $authorizationDocumentPath;
+        $validated['document'] = $authorizationDocumentPath;
         unset($validated['authorization_document']);
 
         try {
             $job = job::create($validated);
         } catch (\Throwable $exception) {
             if ($authorizationDocumentPath !== null) {
-                Storage::disk('local')->delete($authorizationDocumentPath);
+                $this->deleteAuthorizationDocument($authorizationDocumentPath);
             }
 
             throw $exception;
@@ -127,8 +126,15 @@ class jobController extends Controller
      */
     public function show(job $job)
     {
+        $isAdmin = request()->user()?->role === 'admin';
+        $companyIsApproved = $job->company?->approval_status === 'approved';
+
         abort_unless(
-            $job->approval_status === 'approved' || request()->user()?->role === 'admin',
+            $isAdmin || (
+                $job->approval_status === 'approved'
+                && $job->status === 'open'
+                && $companyIsApproved
+            ),
             404
         );
 
@@ -157,13 +163,43 @@ class jobController extends Controller
             'employment_type' => ['nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'in:open,closed'],
             'approval_status' => ['prohibited'],
+            'rejection_reason' => ['prohibited'],
             'user_id' => ['prohibited'],
             'role' => ['prohibited'],
             'authorization_document' => ['prohibited'],
+            'document' => ['prohibited'],
             'authorization_document_path' => ['prohibited'],
         ]);
 
-        if ($request->user()->role !== 'admin') {
+        $hasJobDetails = collect([
+            'company_id',
+            'function_id',
+            'job_title',
+            'job_description',
+            'salary',
+            'work_location',
+            'employment_type',
+        ])->contains(fn (string $field) => array_key_exists($field, $validated));
+
+        if (! $hasJobDetails && array_key_exists('status', $validated)) {
+            abort_if(
+                $request->user()->role !== 'admin'
+                    && $job->approval_status !== 'approved',
+                422,
+                'เปลี่ยนสถานะรับสมัครได้หลังจากประกาศผ่านการอนุมัติแล้วเท่านั้น'
+            );
+
+            $job->update(['status' => $validated['status']]);
+
+            return response()->json([
+                'message' => 'เปลี่ยนสถานะการรับสมัครเรียบร้อยแล้ว',
+                'data' => new JobResource(
+                    $job->load(['company', 'jobFunction'])
+                )
+            ]);
+        }
+
+        if ($request->user()->role !== 'admin' && $hasJobDetails) {
             $validated['approval_status'] = 'pending';
             $validated['rejection_reason'] = null;
         }
@@ -190,13 +226,7 @@ class jobController extends Controller
 
         $job->delete();
 
-        if (
-            $job->authorization_document_path !== null
-            && Storage::disk('local')->exists($job->authorization_document_path)
-            && ! Storage::disk('local')->delete($job->authorization_document_path)
-        ) {
-            throw new RuntimeException('Unable to delete authorization document.');
-        }
+        $this->deleteAuthorizationDocument($job->document);
 
         return response()->noContent();
     }
@@ -205,18 +235,70 @@ class jobController extends Controller
     {
         abort_unless($request->user()?->role === 'admin', 403);
 
+        $documentPath = $job->document;
+        abort_unless($documentPath !== null, 404, 'ไม่พบเอกสารประกอบการสมัครงาน');
+
+        if (str_starts_with($documentPath, 'uploads/documents_job/')) {
+            $path = public_path($documentPath);
+            abort_unless(
+                basename($documentPath) === substr($documentPath, strlen('uploads/documents_job/'))
+                    && File::exists($path),
+                404,
+                'ไม่พบเอกสารประกอบการสมัครงาน'
+            );
+
+            return response()->file($path, ['Content-Disposition' => 'inline']);
+        }
+
         $storage = Storage::disk('local');
         abort_unless(
-            $job->authorization_document_path !== null
-                && $storage->exists($job->authorization_document_path),
+            str_starts_with($documentPath, 'job-authorization-documents/')
+                && $storage->exists($documentPath),
             404,
             'ไม่พบเอกสารประกอบการสมัครงาน'
         );
 
-        return response()->file(
-            $storage->path($job->authorization_document_path),
-            ['Content-Disposition' => 'inline']
-        );
+        return response()->file($storage->path($documentPath), ['Content-Disposition' => 'inline']);
+    }
+
+    private function storeAuthorizationDocument(UploadedFile $file): string
+    {
+        $directory = public_path('uploads/documents_job');
+        File::ensureDirectoryExists($directory);
+
+        $filename = $file->hashName();
+        $file->move($directory, $filename);
+
+        return 'uploads/documents_job/' . $filename;
+    }
+
+    private function deleteAuthorizationDocument(?string $documentPath): void
+    {
+        if ($documentPath === null) {
+            return;
+        }
+
+        if (str_starts_with($documentPath, 'uploads/documents_job/')) {
+            if (basename($documentPath) !== substr($documentPath, strlen('uploads/documents_job/'))) {
+                throw new RuntimeException('Invalid authorization document path.');
+            }
+
+            $path = public_path($documentPath);
+            if (File::exists($path) && ! File::delete($path)) {
+                throw new RuntimeException('Unable to delete authorization document.');
+            }
+
+            return;
+        }
+
+        $storage = Storage::disk('local');
+        if (
+            str_starts_with($documentPath, 'job-authorization-documents/')
+            && $storage->exists($documentPath)
+            && ! $storage->delete($documentPath)
+        ) {
+            throw new RuntimeException('Unable to delete authorization document.');
+        }
     }
 
     public function updateApproval(Request $request, job $job)
